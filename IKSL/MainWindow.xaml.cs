@@ -36,16 +36,16 @@ namespace IKSL
         //store depth data received from the camera
         private DepthImagePixel[] rawDepthData;
        
-
         //this holds a generated RGBA-frame made of depth data
-        private byte[] colorPixels;
-        private byte[] pixels;
-
-        private byte[] resultFrame;
+        private byte[] colorPx;
+        private byte[] depthPx;
+        private byte[] result;
 
         public MainWindow()
         {
             InitializeComponent();
+
+            txtPath.Text = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory) + @"\";
         }
 
         private void WindowLoaded(object sender, RoutedEventArgs e)
@@ -68,8 +68,8 @@ namespace IKSL
                 
                 this.rawDepthData = new DepthImagePixel[this.sensor.DepthStream.FramePixelDataLength];
                 
-                this.pixels = new byte[this.sensor.DepthStream.FramePixelDataLength * sizeof(int)];
-                this.colorPixels = new byte[this.sensor.ColorStream.FramePixelDataLength];
+                this.depthPx = new byte[this.sensor.DepthStream.FramePixelDataLength * sizeof(int)];
+                this.colorPx = new byte[this.sensor.ColorStream.FramePixelDataLength];
 
                 this.depthScreen = new WriteableBitmap(this.sensor.DepthStream.FrameWidth, this.sensor.DepthStream.FrameHeight, 96.0, 96.0, PixelFormats.Bgr32, null);
                 this.Screen3.Source = this.depthScreen;
@@ -110,9 +110,40 @@ namespace IKSL
             MessageBoxResult message = MessageBox.Show("Save current Data to File?", "Save", MessageBoxButton.OKCancel);
             if (message == MessageBoxResult.OK)
             {
-                //saveImage(pixels, "C:\pixels.txt");
+                writeFrame(result, txtPath.Text + "kinect.txt");
             }
+            MessageBox.Show("done.");
 
+        }
+
+        private void writeFrame(byte[] input, String destination)
+        {
+            int x = 0, y = 0;
+            byte[,] arr = new byte[this.sensor.DepthStream.FrameWidth, this.sensor.DepthStream.FrameHeight];
+            for (int i = 0; i < input.Length; i+=4)
+            {
+                arr[x, y] = input[i]; // input[i] looks like this: r g b 0 whereas r=g=b because it's gray.
+                x++;
+                if (x == this.sensor.DepthStream.FrameWidth)
+                {
+                    x = 0;
+                    y++;
+                }
+            }
+            using (System.IO.StreamWriter file = new System.IO.StreamWriter(@destination))
+            {
+                StringBuilder templine = new StringBuilder();
+                for (int j = 0; j < arr.GetLength(1); j++)
+                {
+                    for (int i = 0; i < arr.GetLength(0); i++)
+                    {
+                        templine.Append(arr[i,j] + ";");
+                    }
+                    file.WriteLine(templine);
+                    templine.Clear();
+                }
+                //file.WriteLine("TEST");
+            }
         }
 
         //depth event handler that is called each tick
@@ -130,7 +161,7 @@ namespace IKSL
                     int maxDepth = depthFrame.MaxDepth; //4 m
 
                     for (int depthIndex = 0, colorIndex = 0;
-                        depthIndex < rawDepthData.Length && colorIndex < pixels.Length;
+                        depthIndex < rawDepthData.Length && colorIndex < depthPx.Length;
                         depthIndex++, colorIndex += 4)
                     {
                         //get depth for each pixel
@@ -140,26 +171,26 @@ namespace IKSL
                         if (depth >= minDepth && depth <= maxDepth) 
                             intensity = (byte)(Math.Floor(1 - ((double)(depth - minDepth) / (maxDepth - minDepth)) * 255));
 
-                        pixels[colorIndex + BLUE] = intensity;
-                        pixels[colorIndex + GREEN] = intensity;
-                        pixels[colorIndex + RED] = intensity;
+                        depthPx[colorIndex + BLUE] = intensity;
+                        depthPx[colorIndex + GREEN] = intensity;
+                        depthPx[colorIndex + RED] = intensity;
                         
                     }
 
                     this.depthScreen.WritePixels(
                         new Int32Rect(0, 0, this.depthScreen.PixelWidth, this.depthScreen.PixelHeight),
-                        this.pixels,
+                        this.depthPx,
                         this.depthScreen.PixelWidth * sizeof(int),
                         0);
 
 
                     //now pixels[] holds one depth information frame.
-                    this.resultFrame = calculateResultFrame(this.pixels);
+                    this.result = calculateResultFrame(this.depthPx);
 
                     //write the pixeldata into bitmap
                     this.mainScreen.WritePixels(
                         new Int32Rect(0, 0, this.mainScreen.PixelWidth, this.mainScreen.PixelHeight),
-                        this.resultFrame,
+                        this.result,
                         this.mainScreen.PixelWidth * sizeof(int),
                         0);
                     
@@ -174,12 +205,12 @@ namespace IKSL
                 if (colorFrame != null)
                 {
                     // Copy the pixel data from the image to a temporary array
-                    colorFrame.CopyPixelDataTo(this.colorPixels);
+                    colorFrame.CopyPixelDataTo(this.colorPx);
 
                     // Write the pixel data into our bitmap
                     this.colorScreen.WritePixels(
                         new Int32Rect(0, 0, this.colorScreen.PixelWidth, this.colorScreen.PixelHeight),
-                        this.colorPixels,
+                        this.colorPx,
                         this.colorScreen.PixelWidth * sizeof(int),
                         0);
                 }
@@ -199,6 +230,7 @@ namespace IKSL
         //todo: implement
         private byte[] calculateResultFrame(byte[] bitMap)
         {
+
             return bitMap;
         }
     }

@@ -12,7 +12,7 @@
         <GroupBox Header="Control" HorizontalAlignment="Left" Margin="373,492,0,0" VerticalAlignment="Top" Height="248" Width="645">
             <Grid HorizontalAlignment="Left" Height="226" VerticalAlignment="Top" Width="633">
                 <Button x:Name="btnSave" Content="Save Frame" HorizontalAlignment="Left" VerticalAlignment="Top" Width="75"/>
-                <TextBox x:Name="txtPath" HorizontalAlignment="Left" Height="22" Margin="80,0,0,0" TextWrapping="Wrap" Text="Path" VerticalAlignment="Top" Width="120"/>
+                <TextBox x:Name="txtPath" HorizontalAlignment="Left" Height="22" Margin="80,0,0,0" TextWrapping="Wrap" Text="Path" VerticalAlignment="Top" Width="553"/>
             </Grid>
 
         </GroupBox>
