@@ -45,7 +45,7 @@ namespace IKSL
         {
             InitializeComponent();
 
-            txtPath.Text = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory) + @"\";
+            txtPath.Text = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory) + @"\kinect.txt";
         }
 
         private void WindowLoaded(object sender, RoutedEventArgs e)
@@ -86,6 +86,7 @@ namespace IKSL
                 this.sensor.ColorFrameReady += this.SensorColorFrameReady;
 
                 this.btnSave.Click += this.button_save;
+                this.btnLoad.Click += this.button_load;
                 
                 try
                 {
@@ -110,19 +111,73 @@ namespace IKSL
             MessageBoxResult message = MessageBox.Show("Save current Data to File?", "Save", MessageBoxButton.OKCancel);
             if (message == MessageBoxResult.OK)
             {
-                writeFrame(result, txtPath.Text + "kinect.txt");
+                writeFrame(result, txtPath.Text);
             }
             MessageBox.Show("done.");
 
         }
 
+        private void button_load(object sender, RoutedEventArgs e)
+        {
+
+            byte[] loadArray = readFrame(txtPath.Text);
+
+            this.mainScreen.WritePixels(
+                new Int32Rect(0, 0, this.mainScreen.PixelWidth, this.mainScreen.PixelHeight),
+                loadArray,
+                this.mainScreen.PixelWidth * sizeof(int),
+                0);
+        }
+
+        /// <summary>
+        /// Loads a file and converts it into a byte array.
+        /// </summary>
+        /// <param name="source"></param>
+        /// <returns></returns>
+        private byte[] readFrame(String source)
+        {
+
+            using (System.IO.StreamReader file = new System.IO.StreamReader(@source))
+            {
+                String line;
+                string[] values;
+                StringBuilder s = new StringBuilder();
+                while (!file.EndOfStream)
+                {
+                    line = file.ReadLine();
+                    s.AppendLine(line);
+                }
+                values = s.ToString().Split(new string[] { ";" }, StringSplitOptions.None);
+
+                byte[] frame = new byte[values.Length*4];
+
+                for (int i = 0; i < values.Length-1; i++)
+                {
+                    frame[4*i] = (byte)Convert.ToInt16(values[i]);
+                    frame[4*i + 1] = (byte)Convert.ToInt16(values[i]);
+                    frame[4*i + 2] = (byte)Convert.ToInt16(values[i]);
+                    frame[4*i + 3] = 0;
+
+                }
+
+                return frame;
+            }
+        }
+
+        /// <summary>
+        /// Writes a frame in a file.
+        /// </summary>
+        /// <param name="input"></param>
+        /// <param name="destination"></param>
         private void writeFrame(byte[] input, String destination)
         {
             int x = 0, y = 0;
-            byte[,] arr = new byte[this.sensor.DepthStream.FrameWidth, this.sensor.DepthStream.FrameHeight];
+            String[,] arr = new String[this.sensor.DepthStream.FrameWidth, this.sensor.DepthStream.FrameHeight];
+
             for (int i = 0; i < input.Length; i+=4)
             {
-                arr[x, y] = input[i]; // input[i] looks like this: r g b 0 whereas r=g=b because it's gray.
+                //input[i] looks like this: r g b 0 whereas r=g=b because it's gray.
+                arr[x, y] = input[i].ToString().PadLeft(3, '0');
                 x++;
                 if (x == this.sensor.DepthStream.FrameWidth)
                 {
@@ -142,7 +197,6 @@ namespace IKSL
                     file.WriteLine(templine);
                     templine.Clear();
                 }
-                //file.WriteLine("TEST");
             }
         }
 
@@ -188,12 +242,12 @@ namespace IKSL
                     this.result = calculateResultFrame(this.depthPx);
 
                     //write the pixeldata into bitmap
-                    this.mainScreen.WritePixels(
+                    /*this.mainScreen.WritePixels(
                         new Int32Rect(0, 0, this.mainScreen.PixelWidth, this.mainScreen.PixelHeight),
                         this.result,
                         this.mainScreen.PixelWidth * sizeof(int),
                         0);
-                    
+                    */
                 }
             }
         }
