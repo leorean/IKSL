@@ -1,6 +1,3 @@
-C:\Users\leorean\Documents\Visual Studio 2012\Projects\IKSL\IKSL\bin\Debug\IKSL.exe.config
-C:\Users\leorean\Documents\Visual Studio 2012\Projects\IKSL\IKSL\bin\Debug\IKSL.exe
-C:\Users\leorean\Documents\Visual Studio 2012\Projects\IKSL\IKSL\bin\Debug\IKSL.pdb
 C:\Users\leorean\Documents\Visual Studio 2012\Projects\IKSL\IKSL\obj\Debug\MainWindow.baml
 C:\Users\leorean\Documents\Visual Studio 2012\Projects\IKSL\IKSL\obj\Debug\MainWindow.g.cs
 C:\Users\leorean\Documents\Visual Studio 2012\Projects\IKSL\IKSL\obj\Debug\App.g.cs
@@ -8,6 +5,20 @@ C:\Users\leorean\Documents\Visual Studio 2012\Projects\IKSL\IKSL\obj\Debug\IKSL_
 C:\Users\leorean\Documents\Visual Studio 2012\Projects\IKSL\IKSL\obj\Debug\IKSL.g.resources
 C:\Users\leorean\Documents\Visual Studio 2012\Projects\IKSL\IKSL\obj\Debug\IKSL.Properties.Resources.resources
 C:\Users\leorean\Documents\Visual Studio 2012\Projects\IKSL\IKSL\obj\Debug\IKSL.csproj.GenerateResource.Cache
+C:\Users\leorean\Documents\Visual Studio 2012\Projects\IKSL\IKSL\bin\Debug\IKSL.exe.config
+C:\Users\leorean\Documents\Visual Studio 2012\Projects\IKSL\IKSL\bin\Debug\IKSL.exe
+C:\Users\leorean\Documents\Visual Studio 2012\Projects\IKSL\IKSL\bin\Debug\IKSL.pdb
 C:\Users\leorean\Documents\Visual Studio 2012\Projects\IKSL\IKSL\obj\Debug\IKSL.exe
 C:\Users\leorean\Documents\Visual Studio 2012\Projects\IKSL\IKSL\obj\Debug\IKSL.pdb
 C:\Users\leorean\Documents\Visual Studio 2012\Projects\IKSL\IKSL\obj\Debug\IKSL.csprojResolveAssemblyReference.cache
+C:\Users\leorean\Documents\Visual Studio 2012\Projects\IKSL\IKSL\bin\Debug\Emgu.CV.dll
+C:\Users\leorean\Documents\Visual Studio 2012\Projects\IKSL\IKSL\bin\Debug\Emgu.CV.GPU.dll
+C:\Users\leorean\Documents\Visual Studio 2012\Projects\IKSL\IKSL\bin\Debug\Emgu.CV.ML.dll
+C:\Users\leorean\Documents\Visual Studio 2012\Projects\IKSL\IKSL\bin\Debug\Emgu.CV.UI.dll
+C:\Users\leorean\Documents\Visual Studio 2012\Projects\IKSL\IKSL\bin\Debug\Emgu.Util.dll
+C:\Users\leorean\Documents\Visual Studio 2012\Projects\IKSL\IKSL\bin\Debug\ZedGraph.dll
+C:\Users\leorean\Documents\Visual Studio 2012\Projects\IKSL\IKSL\bin\Debug\Emgu.CV.xml
+C:\Users\leorean\Documents\Visual Studio 2012\Projects\IKSL\IKSL\bin\Debug\Emgu.CV.GPU.xml
+C:\Users\leorean\Documents\Visual Studio 2012\Projects\IKSL\IKSL\bin\Debug\Emgu.CV.ML.xml
+C:\Users\leorean\Documents\Visual Studio 2012\Projects\IKSL\IKSL\bin\Debug\Emgu.CV.UI.xml
+C:\Users\leorean\Documents\Visual Studio 2012\Projects\IKSL\IKSL\bin\Debug\Emgu.Util.xml
