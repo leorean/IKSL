@@ -18,33 +18,11 @@ using System.IO;
 //using openCV;
 using System.Threading;
 using Emgu.CV;
+using System.Drawing;
 
 
 namespace IKSL
 {
-    /*
-    public class Loop
-    {
-        public int counter = 0;
-        int FPS = 1;
-        const int MAXFPS = 30;
-
-        public void count()
-        {
-            while (true)
-            {
-                counter = (counter + 1) % MAXFPS / FPS;
-                //MainWindow.getInstance().lbCounter.Content = counter;
-
-            }
-        }
-
-        public int getCount()
-        {
-            return counter;
-        }
-    }*/
-
     public partial class MainWindow : Window
     {
         const int BLUE = 0;
@@ -61,29 +39,31 @@ namespace IKSL
 
         //store data received from the camera
         private DepthImagePixel[] rawDepthData;
-        
+        private short[] depthData;
+
+        //mapped depth to color fame
+        private ColorImagePoint[] mappedDepthCoordinates;
+
         //byte arrays that hold the generated frames
-        private byte[] colorPx;
+        private byte[] colorData;
         private byte[] depthPx;
         private byte[] resultPx;
+        private byte[] colorDepthPx;
+        private byte[] bitMapBits;
         
-        private Skeleton[] skeletonData;
-        private int HandRightX, HandRightY;
-
         private int frameCounter = -1;
         private int minDepth;
         private int maxDepth;
-
-        private CoordinateMapper coordinateMapper;
         
-        int FPS = 10;
+        int FPS = -1;
         const int MAXFPS = 30;
 
         public MainWindow()
         {
             InitializeComponent();
             txtPath.Text = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory) + @"\kinect.txt";
-            
+            FPS = (int)sliderFPS.Value;
+            lbFPS.Content = "FPS (" + FPS + "/" + MAXFPS + ")";
         }
         
         private void WindowLoaded(object sender, RoutedEventArgs e)
@@ -104,15 +84,14 @@ namespace IKSL
                 this.sensor.DepthStream.Enable(DepthImageFormat.Resolution640x480Fps30);
                 this.sensor.ColorStream.Enable(ColorImageFormat.RgbResolution640x480Fps30);
 
-                //this.sensor.DepthStream.OpenNextFrame(6987);
-                //this.sensor.SkeletonStream.Enable();
-                
                 this.depthPx = new byte[this.sensor.DepthStream.FramePixelDataLength * sizeof(int)];
-                this.colorPx = new byte[this.sensor.ColorStream.FramePixelDataLength];
+                this.colorData = new byte[this.sensor.ColorStream.FramePixelDataLength];
+                this.colorDepthPx = new byte[this.sensor.ColorStream.FramePixelDataLength];
                 this.resultPx = new byte[this.sensor.DepthStream.FramePixelDataLength * sizeof(int)];
                 
+                bitMapBits = new byte[640 * 480 * 4];
                 this.rawDepthData = new DepthImagePixel[this.sensor.DepthStream.FramePixelDataLength];
-                
+
                 this.depthScreen = new WriteableBitmap(this.sensor.DepthStream.FrameWidth, this.sensor.DepthStream.FrameHeight, 96.0, 96.0, PixelFormats.Bgr32, null);
                 this.colorScreen = new WriteableBitmap(this.sensor.ColorStream.FrameWidth, this.sensor.ColorStream.FrameHeight, 96.0, 96.0, PixelFormats.Bgr32, null);
                 this.mainScreen = new WriteableBitmap(this.sensor.DepthStream.FrameWidth, this.sensor.DepthStream.FrameHeight, 96.0, 96.0, PixelFormats.Bgr32, null);
@@ -125,6 +104,8 @@ namespace IKSL
 
                 this.btnSave.Click += this.button_save;
                 this.btnLoad.Click += this.button_load;
+
+                this.sliderFPS.ValueChanged += this.change_FPS;
 
                 try
                 {
@@ -146,6 +127,12 @@ namespace IKSL
                 Environment.Exit(1);
             }
 
+        }
+
+        private void change_FPS(object sender, RoutedEventArgs e)
+        {
+            this.FPS = (int)this.sliderFPS.Value;
+            lbFPS.Content = "FPS (" + FPS + "/" + MAXFPS + ")";
         }
 
         private void button_save(object sender, RoutedEventArgs e)
@@ -171,11 +158,6 @@ namespace IKSL
                 0);
         }
 
-        /// <summary>
-        /// Loads a file and converts it into a byte array.
-        /// </summary>
-        /// <param name="source"></param>
-        /// <returns></returns>
         private byte[] readFrame(String source)
         {
 
@@ -206,11 +188,6 @@ namespace IKSL
             }
         }
 
-        /// <summary>
-        /// Writes a frame in a file.
-        /// </summary>
-        /// <param name="input"></param>
-        /// <param name="destination"></param>
         private void writeFrame(byte[] input, String destination)
         {
             int x = 0, y = 0;
@@ -242,87 +219,6 @@ namespace IKSL
             }
         }
 
-        /*
-        private void TrackClosestSkeleton()
-        {
-            if (this.sensor != null && this.sensor.SkeletonStream != null)
-            {
-                if (!this.sensor.SkeletonStream.AppChoosesSkeletons)
-                {
-                    this.sensor.SkeletonStream.AppChoosesSkeletons = true; // Ensure AppChoosesSkeletons is set
-                }
-
-                float closestDistance = 10000f; // Start with a far enough distance
-                int closestID = 0;
-
-                foreach (Skeleton skeleton in this.skeletonData.Where(s => s.TrackingState != SkeletonTrackingState.NotTracked))
-                {
-                    if (skeleton.Position.Z < closestDistance)
-                    {
-                        closestID = skeleton.TrackingId;
-                        closestDistance = skeleton.Position.Z;
-                    }
-                }
-
-                if (closestID > 0)
-                {
-                    this.sensor.SkeletonStream.ChooseSkeletons(closestID); // Track this skeleton
-                }
-            }
-        }
-        */
-
-        /*
-        private void FindPlayerInDepthPixel(short[] depthFrame)
-        {
-            foreach (short depthPixel in depthFrame)
-            {
-                int player = depthPixel & DepthImageFrame.PlayerIndexBitmask;
-
-                if (player > 0 && this.skeletonData != null)
-                {
-                    Skeleton skeletonAtPixel = this.skeletonData[player - 1];   // Found the player at this pixel
-                    // ...
-                }
-            }
-        }*/
-        
-        void SkeletonFrameReady(object sender, AllFramesReadyEventArgs e)
-        {
-            
-            using (SkeletonFrame skeletonFrame = e.OpenSkeletonFrame())//Open the Skeleton frame
-            {
-                
-                if (skeletonFrame != null)
-                {
-                    this.skeletonData = new Skeleton[skeletonFrame.SkeletonArrayLength];
-
-                    if (this.skeletonData != null)// check that a frame is available
-                    {
-                        skeletonFrame.CopySkeletonDataTo(this.skeletonData);// get the skeletal information in this frame
-
-                        foreach (Skeleton s in this.skeletonData)
-                        {
-                            if (s.TrackingState == SkeletonTrackingState.Tracked)
-                            {
-                                foreach (Joint j in s.Joints)
-                                {
-                                    if (j.JointType == JointType.HandRight)
-                                    {
-                                        HandRightX = (int)j.Position.X;
-                                        HandRightY = (int)j.Position.Y;
-                                        lbRightHand.Content = "Right Hand Coordinates: ("
-                                            + HandRightX + ", " + HandRightY + ")";
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
         private async void OnAllFramesReady(object sender, AllFramesReadyEventArgs e)
         {
             try
@@ -348,7 +244,7 @@ namespace IKSL
             }
             catch (Exception ex)
             {
-                //TODO: log or user prompt or whatever
+                Console.Out.WriteLine(ex.Message);
             }
         }
 
@@ -359,7 +255,7 @@ namespace IKSL
                 // Write the pixel data into our bitmap
                 this.colorScreen.WritePixels(
                     new Int32Rect(0, 0, this.colorScreen.PixelWidth, this.colorScreen.PixelHeight),
-                    this.colorPx,
+                    this.colorData,
                     this.colorScreen.PixelWidth * sizeof(int),
                     0);
             }
@@ -372,11 +268,20 @@ namespace IKSL
                             this.depthScreen.PixelWidth * sizeof(int),
                             0);
 
-                this.mainScreen.WritePixels(
+                /*this.mainScreen.WritePixels(
                             new Int32Rect(0, 0, this.mainScreen.PixelWidth, this.mainScreen.PixelHeight),
                             this.resultPx,
                             this.mainScreen.PixelWidth * sizeof(int),
+                            0);*/
+
+                this.mainScreen.WritePixels(
+                            new Int32Rect(0, 0, this.mainScreen.PixelWidth, this.mainScreen.PixelHeight),
+                            this.bitMapBits,
+                            this.mainScreen.PixelWidth * sizeof(int),
                             0);
+
+                //TODO: test drawing a rectangle onto the image
+
             }
         }
 
@@ -388,7 +293,8 @@ namespace IKSL
                     return false;
 
                 // Copy the pixel data from the image to a temporary array
-                colorFrame.CopyPixelDataTo(this.colorPx);
+                colorFrame.CopyPixelDataTo(this.colorData);
+
             }
 
             return true;
@@ -403,9 +309,15 @@ namespace IKSL
 
                 depthFrame.CopyDepthImagePixelDataTo(this.rawDepthData);
 
+                depthData = new short[depthFrame.PixelDataLength];
+                depthFrame.CopyPixelDataTo(this.depthData);
+
+                this.mappedDepthCoordinates = new ColorImagePoint[depthFrame.PixelDataLength];
+
                 //get min and max reliable depth for the current frame
                 this.minDepth = depthFrame.MinDepth; //80 cm
-                this.maxDepth = depthFrame.MaxDepth / 2; //2 m
+                this.maxDepth = 2500; //depthFrame.MaxDepth / 2; //2 m
+
             }
 
             return true;
@@ -413,7 +325,11 @@ namespace IKSL
 
         private void CalculateDepthImageData()
         {
-            int nearestPixel = 0;
+            int[] depthHistogram = new int[256];
+            Array.Clear(depthHistogram, 0, depthHistogram.Length);
+
+            float[] cumulativeHistogram = new float[256];
+            Array.Clear(cumulativeHistogram, 0, cumulativeHistogram.Length);
 
             int col = 0; //index for color pixels
             for (int i = 0; i < this.rawDepthData.Length; ++i)
@@ -422,25 +338,131 @@ namespace IKSL
                 short depth = this.rawDepthData[i].Depth;
 
                 byte intensity = (depth < minDepth || depth > maxDepth) ? (byte)0 :
-                    (byte)(255 - (byte)(((float)(depth - minDepth) / (maxDepth - minDepth)) * 255.0f));
+                                    (byte)((((float)(depth - minDepth) / (maxDepth - minDepth)) * 255.0f));
 
                 this.depthPx[col++] = intensity;
                 this.depthPx[col++] = intensity;
                 this.depthPx[col++] = intensity;
                 ++col;
 
-                if (nearestPixel < intensity)
-                    nearestPixel = intensity;
-
+                depthHistogram[intensity] += 1; 
+                
             }
 
+            //iterate through all data of the histogram and sum it up in the accumulative histogram
+            int temp = 0;
+            for (int i = 0; i < 256; i++)
+            {
+                temp = temp + depthHistogram[i];
+                cumulativeHistogram[i] = (int)(100 * (float)(temp) / (float)(rawDepthData.Length)); //cumulativeHistogram[i-1] + depthHistogram[i];
+            }
+
+            //calculate rise and cut image in regions
+            float rise = 0;
+            byte l = 1, h = 0, r = 0, maxRegion = 1;
+            byte[] region = new byte[256];
+            for (int i = 1; i < 256; i++)
+            {
+                if (cumulativeHistogram[i] == cumulativeHistogram[i-1])
+                {
+                    l += 1;
+                }
+                else 
+                {
+                    h = (byte)(cumulativeHistogram[i] - cumulativeHistogram[i - 1]);
+                    rise = h / l;
+                    if (rise > 0.9)
+                        r += 1;
+                    l = 1;
+                }
+                region[i] = r;
+                maxRegion = r;
+            }
+
+            int c = 256 / (maxRegion - 1);
+
+            byte[] resultPx = new byte[depthPx.Length];
+            byte[] regionToPixel = new byte[depthPx.Length];
             for (int i = 0; i < depthPx.Length; i++)
             {
-                //resultPx[i] = ((depthPx[i] > (byte)150) ? (byte)255 : (byte)0);
-                resultPx[i] = 0;
-                if (depthPx[i] >= nearestPixel - 20)
-                    resultPx[i] = depthPx[i];
+                regionToPixel[i] = region[depthPx[i]];
+                this.resultPx[i] = (byte)(255 - Math.Min(c * regionToPixel[i],255));
+
             }
+
+            //map color to depth data
+            this.sensor.CoordinateMapper.MapDepthFrameToColorFrame(DepthImageFormat.Resolution640x480Fps30, rawDepthData, ColorImageFormat.RgbResolution640x480Fps30, mappedDepthCoordinates);
+
+            // Put the color image into the bitmap bits
+            for (int i = 0; i < colorData.Length; i += 4)
+            {
+                bitMapBits[i + 3] = 255; //alpha
+                bitMapBits[i + 2] = colorData[i + 2];
+                bitMapBits[i + 1] = colorData[i + 1];
+                bitMapBits[i] = colorData[i];
+            }
+
+            for (int i = 0; i < depthData.Length; i++)
+            {
+                int depthVal = depthData[i] >> DepthImageFrame.PlayerIndexBitmaskWidth;
+
+                // Put in the overlay of, say, depth values < 1 meters.       
+                if ((depthVal < maxDepth/2) && (depthVal > minDepth))
+                {
+                    ColorImagePoint point = mappedDepthCoordinates[i];
+
+                    if ((point.X >= 0 && point.X < 640) && (point.Y >= 0 && point.Y < 480))
+                    {
+                        int baseIndex = (point.Y * 640 + point.X) * 4;
+//                        bitMapBits[baseIndex] = (byte)((bitMapBits[baseIndex] + 255) >> 1);
+//                        bitMapBits[baseIndex + 1] = (byte)((bitMapBits[baseIndex + 1] + 255) >> 1);
+//                        bitMapBits[baseIndex + 2] = (byte)((bitMapBits[baseIndex + 2] + 255) >> 1);
+
+                        bitMapBits[baseIndex] = (byte)(0);
+                        bitMapBits[baseIndex + 1] = (byte)(255);
+                        bitMapBits[baseIndex + 2] = (byte)(255);                        
+
+                    }
+                }
+            }
+
+
+            /*
+            var depthWidth = this.sensor.DepthStream.FrameWidth;
+            var depthHeight = this.sensor.DepthStream.FrameHeight;
+
+            // loop over each row and column of the depth
+            for (int y = 0; y < depthHeight; ++y)
+            {
+                for (int x = 0; x < depthWidth; ++x)
+                {
+                    // calculate index into depth array
+                    int depthIndex = x + (y * depthWidth);
+
+                    DepthImagePixel depthPixel = this.rawDepthData[depthIndex];
+
+                    //now DO something
+                    //this.colorDepthPx[depthIndex] = (byte)depthPixel.Depth;
+
+                    colorDepthPx[depthIndex] = mappedDepthCoordinates[depthIndex].;
+                    colorDepthPx[depthIndex + 1] = (byte)colorDepthPx[depthIndex + 1];
+                    colorDepthPx[depthIndex + 2] = (byte)colorDepthPx[depthIndex + 2];
+                }
+            }
+            */
+        }
+
+        private System.Drawing.Bitmap BitmapFromWriteableBitmap(WriteableBitmap writeBmp)
+        {
+            System.Drawing.Bitmap bmp;
+            using (MemoryStream outStream = new MemoryStream())
+            {
+                BitmapEncoder enc = new BmpBitmapEncoder();
+                enc.Frames.Add(BitmapFrame.Create((BitmapSource)writeBmp));
+                enc.Save(outStream);
+                bmp = new System.Drawing.Bitmap(outStream);
+            }
+            return bmp;
         }
 
         //stop sensor on closing window

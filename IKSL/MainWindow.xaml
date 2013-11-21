@@ -14,8 +14,8 @@
                 <Button x:Name="btnSave" Content="Save Frame" HorizontalAlignment="Left" VerticalAlignment="Top" Width="75"/>
                 <TextBox x:Name="txtPath" HorizontalAlignment="Left" Height="22" Margin="160,0,0,0" TextWrapping="Wrap" Text="Path" VerticalAlignment="Top" Width="473"/>
                 <Button x:Name="btnLoad" Content="Load Frame" HorizontalAlignment="Left" Margin="80,0,0,0" VerticalAlignment="Top" Width="75"/>
-                <Label x:Name="lbRightHand" Content="Right Hand Coordinates:" HorizontalAlignment="Left" Margin="0,27,0,0" VerticalAlignment="Top"/>
-                <Label x:Name="lbCounter" Content="-" HorizontalAlignment="Left" Margin="0,58,0,0" VerticalAlignment="Top"/>
+                <Slider x:Name="sliderFPS" HorizontalAlignment="Left" Margin="80,27,0,0" VerticalAlignment="Top" Width="155" Minimum="1" Maximum="30" LargeChange="5" SmallChange="1" Value="10"/>
+                <Label x:Name="lbFPS" Content="FPS (30/30)" HorizontalAlignment="Left" Margin="0,27,0,0" VerticalAlignment="Top" Width="75"/>
             </Grid>
 
         </GroupBox>
