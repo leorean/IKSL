@@ -20,7 +20,6 @@ using System.Threading;
 using Emgu.CV;
 using System.Drawing;
 
-
 namespace IKSL
 {
     public partial class MainWindow : Window
@@ -36,7 +35,7 @@ namespace IKSL
         private WriteableBitmap mainScreen;
         private WriteableBitmap depthScreen;
         private WriteableBitmap colorScreen;
-
+        
         //store data received from the camera
         private DepthImagePixel[] rawDepthData;
         private short[] depthData;
@@ -92,10 +91,10 @@ namespace IKSL
                 bitMapBits = new byte[640 * 480 * 4];
                 this.rawDepthData = new DepthImagePixel[this.sensor.DepthStream.FramePixelDataLength];
 
-                this.depthScreen = new WriteableBitmap(this.sensor.DepthStream.FrameWidth, this.sensor.DepthStream.FrameHeight, 96.0, 96.0, PixelFormats.Bgr32, null);
-                this.colorScreen = new WriteableBitmap(this.sensor.ColorStream.FrameWidth, this.sensor.ColorStream.FrameHeight, 96.0, 96.0, PixelFormats.Bgr32, null);
-                this.mainScreen = new WriteableBitmap(this.sensor.DepthStream.FrameWidth, this.sensor.DepthStream.FrameHeight, 96.0, 96.0, PixelFormats.Bgr32, null);
-               
+                this.depthScreen = new WriteableBitmap(640, 480, 96.0, 96.0, PixelFormats.Bgr32, null);
+                this.colorScreen = new WriteableBitmap(640, 480, 96.0, 96.0, PixelFormats.Bgr32, null);
+                this.mainScreen = new WriteableBitmap(640, 480, 96.0, 96.0, PixelFormats.Bgr32, null);
+                
                 this.sensor.AllFramesReady += OnAllFramesReady;
 
                 this.Screen1.Source = this.mainScreen;
@@ -230,9 +229,9 @@ namespace IKSL
                 IList<Task> tasks = new List<Task>();
 
                 bool colorImageDataUpdated = UpdateColorImagePixelData(e);
-                bool depthImageRawDataUpdated = UpdateDepthImagePixelRawData(e);
+                bool allDataUpdated = UpdateDepthImagePixelRawData(e);
 
-                if (depthImageRawDataUpdated)
+                if (allDataUpdated)
                 {
                     Task calcDepthTask = Task.Factory.StartNew(() => CalculateDepthImageData());
                     tasks.Add(calcDepthTask);
@@ -240,7 +239,9 @@ namespace IKSL
 
                 await Task.WhenAll(tasks);
 
-                UpdateScreens(colorImageDataUpdated, depthImageRawDataUpdated);
+                UpdateScreens(colorImageDataUpdated, allDataUpdated);
+
+                
             }
             catch (Exception ex)
             {
@@ -248,11 +249,10 @@ namespace IKSL
             }
         }
 
-        private void UpdateScreens(bool colorImageDataUpdated, bool depthImageRawDataUpdated)
+        private void UpdateScreens(bool colorImageDataUpdated, bool allDataUpdated)
         {
             if (colorImageDataUpdated)
             {
-                // Write the pixel data into our bitmap
                 this.colorScreen.WritePixels(
                     new Int32Rect(0, 0, this.colorScreen.PixelWidth, this.colorScreen.PixelHeight),
                     this.colorData,
@@ -260,7 +260,7 @@ namespace IKSL
                     0);
             }
 
-            if (depthImageRawDataUpdated)
+            if (allDataUpdated)
             {
                 this.depthScreen.WritePixels(
                             new Int32Rect(0, 0, this.depthScreen.PixelWidth, this.depthScreen.PixelHeight),
@@ -268,19 +268,24 @@ namespace IKSL
                             this.depthScreen.PixelWidth * sizeof(int),
                             0);
 
-                /*this.mainScreen.WritePixels(
-                            new Int32Rect(0, 0, this.mainScreen.PixelWidth, this.mainScreen.PixelHeight),
-                            this.resultPx,
-                            this.mainScreen.PixelWidth * sizeof(int),
-                            0);*/
-
                 this.mainScreen.WritePixels(
                             new Int32Rect(0, 0, this.mainScreen.PixelWidth, this.mainScreen.PixelHeight),
                             this.bitMapBits,
                             this.mainScreen.PixelWidth * sizeof(int),
                             0);
 
-                //TODO: test drawing a rectangle onto the image
+
+                mainScreen.Lock();
+                var b = new System.Drawing.Bitmap(mainScreen.PixelWidth, mainScreen.PixelHeight, mainScreen.BackBufferStride, System.Drawing.Imaging.PixelFormat.Format32bppArgb,
+                    mainScreen.BackBuffer);
+
+                using (var bitmapGraphics = System.Drawing.Graphics.FromImage(b))
+                {
+                    //DRAW STUFF ONTO THE SCREEN HERE
+                    //bitmapGraphics.DrawLine(new System.Drawing.Pen(System.Drawing.Brushes.Red, 5), 0, 0, 640, 480);                    
+                }
+                mainScreen.AddDirtyRect(new Int32Rect(0, 0, mainScreen.PixelWidth, mainScreen.PixelHeight));
+                mainScreen.Unlock();
 
             }
         }
@@ -402,6 +407,7 @@ namespace IKSL
                 bitMapBits[i] = colorData[i];
             }
 
+            //combine depth data onto the color data
             for (int i = 0; i < depthData.Length; i++)
             {
                 int depthVal = depthData[i] >> DepthImageFrame.PlayerIndexBitmaskWidth;
@@ -414,9 +420,6 @@ namespace IKSL
                     if ((point.X >= 0 && point.X < 640) && (point.Y >= 0 && point.Y < 480))
                     {
                         int baseIndex = (point.Y * 640 + point.X) * 4;
-//                        bitMapBits[baseIndex] = (byte)((bitMapBits[baseIndex] + 255) >> 1);
-//                        bitMapBits[baseIndex + 1] = (byte)((bitMapBits[baseIndex + 1] + 255) >> 1);
-//                        bitMapBits[baseIndex + 2] = (byte)((bitMapBits[baseIndex + 2] + 255) >> 1);
 
                         bitMapBits[baseIndex] = (byte)(0);
                         bitMapBits[baseIndex + 1] = (byte)(255);
@@ -425,44 +428,6 @@ namespace IKSL
                     }
                 }
             }
-
-
-            /*
-            var depthWidth = this.sensor.DepthStream.FrameWidth;
-            var depthHeight = this.sensor.DepthStream.FrameHeight;
-
-            // loop over each row and column of the depth
-            for (int y = 0; y < depthHeight; ++y)
-            {
-                for (int x = 0; x < depthWidth; ++x)
-                {
-                    // calculate index into depth array
-                    int depthIndex = x + (y * depthWidth);
-
-                    DepthImagePixel depthPixel = this.rawDepthData[depthIndex];
-
-                    //now DO something
-                    //this.colorDepthPx[depthIndex] = (byte)depthPixel.Depth;
-
-                    colorDepthPx[depthIndex] = mappedDepthCoordinates[depthIndex].;
-                    colorDepthPx[depthIndex + 1] = (byte)colorDepthPx[depthIndex + 1];
-                    colorDepthPx[depthIndex + 2] = (byte)colorDepthPx[depthIndex + 2];
-                }
-            }
-            */
-        }
-
-        private System.Drawing.Bitmap BitmapFromWriteableBitmap(WriteableBitmap writeBmp)
-        {
-            System.Drawing.Bitmap bmp;
-            using (MemoryStream outStream = new MemoryStream())
-            {
-                BitmapEncoder enc = new BmpBitmapEncoder();
-                enc.Frames.Add(BitmapFrame.Create((BitmapSource)writeBmp));
-                enc.Save(outStream);
-                bmp = new System.Drawing.Bitmap(outStream);
-            }
-            return bmp;
         }
 
         //stop sensor on closing window
