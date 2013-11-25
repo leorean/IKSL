@@ -19,6 +19,7 @@ using System.IO;
 using System.Threading;
 using Emgu.CV;
 using System.Drawing;
+using KinectDepthSmoothing;
 
 namespace IKSL
 {
@@ -44,16 +45,18 @@ namespace IKSL
         private ColorImagePoint[] mappedDepthCoordinates;
 
         //byte arrays that hold the generated frames
-        private byte[] colorData;
-        private byte[] depthPx;
-        private byte[] resultPx;
-        private byte[] colorDepthPx;
-        private byte[] bitMapBits;
-        
+        private byte[] colorBitMap;
+        private byte[] depthBitMap;
+        private byte[] colorDepthBitMap;
+        private byte[] depthRegionBitMap;
+
         private int frameCounter = -1;
         private int minDepth;
         private int maxDepth;
-        
+
+        private AveragedSmoothing smoothingAverage = new AveragedSmoothing();
+        private FilteredSmoothing smoothingFiltered = new FilteredSmoothing();
+
         int FPS = -1;
         const int MAXFPS = 30;
 
@@ -83,12 +86,10 @@ namespace IKSL
                 this.sensor.DepthStream.Enable(DepthImageFormat.Resolution640x480Fps30);
                 this.sensor.ColorStream.Enable(ColorImageFormat.RgbResolution640x480Fps30);
 
-                this.depthPx = new byte[this.sensor.DepthStream.FramePixelDataLength * sizeof(int)];
-                this.colorData = new byte[this.sensor.ColorStream.FramePixelDataLength];
-                this.colorDepthPx = new byte[this.sensor.ColorStream.FramePixelDataLength];
-                this.resultPx = new byte[this.sensor.DepthStream.FramePixelDataLength * sizeof(int)];
+                this.depthBitMap = new byte[this.sensor.DepthStream.FramePixelDataLength * sizeof(int)];
+                this.colorBitMap = new byte[this.sensor.ColorStream.FramePixelDataLength];
+                this.colorDepthBitMap = new byte[640 * 480 * 4];
                 
-                bitMapBits = new byte[640 * 480 * 4];
                 this.rawDepthData = new DepthImagePixel[this.sensor.DepthStream.FramePixelDataLength];
 
                 this.depthScreen = new WriteableBitmap(640, 480, 96.0, 96.0, PixelFormats.Bgr32, null);
@@ -139,7 +140,7 @@ namespace IKSL
             MessageBoxResult message = MessageBox.Show("Save current Data to File?", "Save", MessageBoxButton.OKCancel);
             if (message == MessageBoxResult.OK)
             {
-                writeFrame(depthPx, txtPath.Text);
+                writeFrame(depthBitMap, txtPath.Text);
             }
             MessageBox.Show("done.");
 
@@ -255,22 +256,31 @@ namespace IKSL
             {
                 this.colorScreen.WritePixels(
                     new Int32Rect(0, 0, this.colorScreen.PixelWidth, this.colorScreen.PixelHeight),
-                    this.colorData,
+                    this.colorBitMap,
                     this.colorScreen.PixelWidth * sizeof(int),
                     0);
             }
 
             if (allDataUpdated)
             {
-                this.depthScreen.WritePixels(
+                //show depth or regional image
+                if (chkRegion.IsChecked == true)
+                    this.depthScreen.WritePixels(
                             new Int32Rect(0, 0, this.depthScreen.PixelWidth, this.depthScreen.PixelHeight),
-                            this.depthPx,
+                            this.depthRegionBitMap,
+                            this.depthScreen.PixelWidth * sizeof(int),
+                            0);
+                else
+                    this.depthScreen.WritePixels(
+                            new Int32Rect(0, 0, this.depthScreen.PixelWidth, this.depthScreen.PixelHeight),
+                            this.depthBitMap,
                             this.depthScreen.PixelWidth * sizeof(int),
                             0);
 
+                //show mapped image
                 this.mainScreen.WritePixels(
                             new Int32Rect(0, 0, this.mainScreen.PixelWidth, this.mainScreen.PixelHeight),
-                            this.bitMapBits,
+                            this.colorDepthBitMap,
                             this.mainScreen.PixelWidth * sizeof(int),
                             0);
 
@@ -298,7 +308,7 @@ namespace IKSL
                     return false;
 
                 // Copy the pixel data from the image to a temporary array
-                colorFrame.CopyPixelDataTo(this.colorData);
+                colorFrame.CopyPixelDataTo(this.colorBitMap);
 
             }
 
@@ -313,15 +323,18 @@ namespace IKSL
                     return false;
 
                 depthFrame.CopyDepthImagePixelDataTo(this.rawDepthData);
-
+                if (rbAverage.IsChecked == true) this.rawDepthData = this.smoothingAverage.CreateAverageDepthArray(rawDepthData, depthFrame.Width, depthFrame.Height);
+                else if (rbFiltered.IsChecked == true) this.rawDepthData = this.smoothingFiltered.CreateFilteredDepthArray(rawDepthData, depthFrame.Width, depthFrame.Height);
+                
                 depthData = new short[depthFrame.PixelDataLength];
                 depthFrame.CopyPixelDataTo(this.depthData);
+                
 
                 this.mappedDepthCoordinates = new ColorImagePoint[depthFrame.PixelDataLength];
 
                 //get min and max reliable depth for the current frame
                 this.minDepth = depthFrame.MinDepth; //80 cm
-                this.maxDepth = 2500; //depthFrame.MaxDepth / 2; //2 m
+                this.maxDepth = depthFrame.MaxDepth / 2; //2 m
 
             }
 
@@ -332,8 +345,7 @@ namespace IKSL
         {
             int[] depthHistogram = new int[256];
             Array.Clear(depthHistogram, 0, depthHistogram.Length);
-
-            float[] cumulativeHistogram = new float[256];
+            int[] cumulativeHistogram = new int[256];
             Array.Clear(cumulativeHistogram, 0, cumulativeHistogram.Length);
 
             int col = 0; //index for color pixels
@@ -342,70 +354,85 @@ namespace IKSL
                 //get depth for each pixel
                 short depth = this.rawDepthData[i].Depth;
 
-                byte intensity = (depth < minDepth || depth > maxDepth) ? (byte)0 :
-                                    (byte)((((float)(depth - minDepth) / (maxDepth - minDepth)) * 255.0f));
+                byte intensity = 255;
+                if (depth > minDepth && depth < maxDepth)
+                    intensity = (byte)((((float)(depth - minDepth) / (maxDepth - minDepth)) * 255.0f));
+                else if (depth >= maxDepth)
+                    intensity = 255;
 
-                this.depthPx[col++] = intensity;
-                this.depthPx[col++] = intensity;
-                this.depthPx[col++] = intensity;
+                this.depthBitMap[col++] = intensity;
+                this.depthBitMap[col++] = intensity;
+                this.depthBitMap[col++] = intensity;
                 ++col;
 
-                depthHistogram[intensity] += 1; 
-                
-            }
+                depthHistogram[intensity] += 1;
 
+            }
+            
             //iterate through all data of the histogram and sum it up in the accumulative histogram
             int temp = 0;
             for (int i = 0; i < 256; i++)
             {
                 temp = temp + depthHistogram[i];
-                cumulativeHistogram[i] = (int)(100 * (float)(temp) / (float)(rawDepthData.Length)); //cumulativeHistogram[i-1] + depthHistogram[i];
+                cumulativeHistogram[i] = temp;
             }
 
-            //calculate rise and cut image in regions
-            float rise = 0;
-            byte l = 1, h = 0, r = 0, maxRegion = 1;
+            
+            byte r = 0, maxRegion = 1;
             byte[] region = new byte[256];
-            for (int i = 1; i < 256; i++)
+            int[] dif = new int[256];
+            Array.Clear(dif, 0, 256);
+            Array.Clear(region, 0, 256);
+
+            int w = 4;
+            int p, q, m;
+            for (int i = 2*w; i < 256; i += w)
             {
-                if (cumulativeHistogram[i] == cumulativeHistogram[i-1])
+                q = cumulativeHistogram[i] - cumulativeHistogram[i - w];
+                p = cumulativeHistogram[i - w] - cumulativeHistogram[i - 2*w];
+
+                if (p < q)
                 {
-                    l += 1;
-                }
-                else 
-                {
-                    h = (byte)(cumulativeHistogram[i] - cumulativeHistogram[i - 1]);
-                    rise = h / l;
-                    if (rise > 0.9)
+
+                    m = (cumulativeHistogram[i] - cumulativeHistogram[i - 2 * w]) / 2 * w;
+                   
+                    if (m > cumulativeHistogram[i - w])
                         r += 1;
-                    l = 1;
+                   
                 }
-                region[i] = r;
+                for (int j = i - 2 * w; j < i; j++)
+                    region[j] = r;
+                
                 maxRegion = r;
             }
 
-            int c = 256 / (maxRegion - 1);
-
-            byte[] resultPx = new byte[depthPx.Length];
-            byte[] regionToPixel = new byte[depthPx.Length];
-            for (int i = 0; i < depthPx.Length; i++)
+            this.depthRegionBitMap = new byte[depthBitMap.Length];
+            byte[] regionToPixel = new byte[depthBitMap.Length];
+            for (int i = 0; i < depthBitMap.Length; i++)
             {
-                regionToPixel[i] = region[depthPx[i]];
-                this.resultPx[i] = (byte)(255 - Math.Min(c * regionToPixel[i],255));
-
+                if (region[depthBitMap[i]] > 1 && region[depthBitMap[i]]< maxRegion)
+                    this.depthRegionBitMap[i] = 255;
+                else
+                    this.depthRegionBitMap[i] = 0;
+                
             }
+            
 
+            
             //map color to depth data
             this.sensor.CoordinateMapper.MapDepthFrameToColorFrame(DepthImageFormat.Resolution640x480Fps30, rawDepthData, ColorImageFormat.RgbResolution640x480Fps30, mappedDepthCoordinates);
 
             // Put the color image into the bitmap bits
-            for (int i = 0; i < colorData.Length; i += 4)
+            for (int i = 0; i < colorBitMap.Length; i += 4)
             {
-                bitMapBits[i + 3] = 255; //alpha
-                bitMapBits[i + 2] = colorData[i + 2];
-                bitMapBits[i + 1] = colorData[i + 1];
-                bitMapBits[i] = colorData[i];
+                colorDepthBitMap[i + 3] = 255; //alpha
+                colorDepthBitMap[i + 2] = colorBitMap[i + 2];
+                colorDepthBitMap[i + 1] = colorBitMap[i + 1];
+                colorDepthBitMap[i] = colorBitMap[i];
             }
+
+            int tx = 192;
+            int ty = 112;
 
             //combine depth data onto the color data
             for (int i = 0; i < depthData.Length; i++)
@@ -413,18 +440,17 @@ namespace IKSL
                 int depthVal = depthData[i] >> DepthImageFrame.PlayerIndexBitmaskWidth;
 
                 // Put in the overlay of, say, depth values < 1 meters.       
-                if ((depthVal < maxDepth/2) && (depthVal > minDepth))
+                if ((depthVal < maxDepth) && (depthVal > minDepth))
                 {
                     ColorImagePoint point = mappedDepthCoordinates[i];
 
-                    if ((point.X >= 0 && point.X < 640) && (point.Y >= 0 && point.Y < 480))
+                    if ((point.X >= 0+tx && point.X < 640-tx) && (point.Y >= 0+ty && point.Y < 480-ty))
                     {
                         int baseIndex = (point.Y * 640 + point.X) * 4;
 
-                        bitMapBits[baseIndex] = (byte)(0);
-                        bitMapBits[baseIndex + 1] = (byte)(255);
-                        bitMapBits[baseIndex + 2] = (byte)(255);                        
-
+                        colorDepthBitMap[baseIndex] = (byte)(0);
+                        colorDepthBitMap[baseIndex + 1] = (byte)(255);
+                        colorDepthBitMap[baseIndex + 2] = (byte)(255);
                     }
                 }
             }

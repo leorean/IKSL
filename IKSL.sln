@@ -12,6 +12,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HandTracking", "..\..\..\..
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FaceTrackingBasics-WPF", "..\..\..\..\Desktop\FaceTrackingBasics-WPF\FaceTrackingBasics-WPF.csproj", "{8FB2DEA6-9900-4FC5-87E4-B54188F62884}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HandGestureRecognition", "..\..\..\..\Desktop\HandGestureRecognition\HandGestureRecognition\HandGestureRecognition\HandGestureRecognition.csproj", "{0A25BCF8-D49F-4909-B76D-1280054F10FC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|.NET = Debug|.NET
@@ -130,6 +132,28 @@ Global
 		{8FB2DEA6-9900-4FC5-87E4-B54188F62884}.Release|x64.Build.0 = Release|x64
 		{8FB2DEA6-9900-4FC5-87E4-B54188F62884}.Release|x86.ActiveCfg = Release|Win32
 		{8FB2DEA6-9900-4FC5-87E4-B54188F62884}.Release|x86.Build.0 = Release|Win32
+		{0A25BCF8-D49F-4909-B76D-1280054F10FC}.Debug|.NET.ActiveCfg = Debug|Any CPU
+		{0A25BCF8-D49F-4909-B76D-1280054F10FC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0A25BCF8-D49F-4909-B76D-1280054F10FC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0A25BCF8-D49F-4909-B76D-1280054F10FC}.Debug|Mixed Platforms.ActiveCfg = Debug|x86
+		{0A25BCF8-D49F-4909-B76D-1280054F10FC}.Debug|Mixed Platforms.Build.0 = Debug|x86
+		{0A25BCF8-D49F-4909-B76D-1280054F10FC}.Debug|Win32.ActiveCfg = Debug|x86
+		{0A25BCF8-D49F-4909-B76D-1280054F10FC}.Debug|Win32.Build.0 = Debug|x86
+		{0A25BCF8-D49F-4909-B76D-1280054F10FC}.Debug|x64.ActiveCfg = Debug|x64
+		{0A25BCF8-D49F-4909-B76D-1280054F10FC}.Debug|x64.Build.0 = Debug|x64
+		{0A25BCF8-D49F-4909-B76D-1280054F10FC}.Debug|x86.ActiveCfg = Debug|x86
+		{0A25BCF8-D49F-4909-B76D-1280054F10FC}.Debug|x86.Build.0 = Debug|x86
+		{0A25BCF8-D49F-4909-B76D-1280054F10FC}.Release|.NET.ActiveCfg = Release|Any CPU
+		{0A25BCF8-D49F-4909-B76D-1280054F10FC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0A25BCF8-D49F-4909-B76D-1280054F10FC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0A25BCF8-D49F-4909-B76D-1280054F10FC}.Release|Mixed Platforms.ActiveCfg = Release|x86
+		{0A25BCF8-D49F-4909-B76D-1280054F10FC}.Release|Mixed Platforms.Build.0 = Release|x86
+		{0A25BCF8-D49F-4909-B76D-1280054F10FC}.Release|Win32.ActiveCfg = Release|x86
+		{0A25BCF8-D49F-4909-B76D-1280054F10FC}.Release|Win32.Build.0 = Release|x86
+		{0A25BCF8-D49F-4909-B76D-1280054F10FC}.Release|x64.ActiveCfg = Release|x64
+		{0A25BCF8-D49F-4909-B76D-1280054F10FC}.Release|x64.Build.0 = Release|x64
+		{0A25BCF8-D49F-4909-B76D-1280054F10FC}.Release|x86.ActiveCfg = Release|x86
+		{0A25BCF8-D49F-4909-B76D-1280054F10FC}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
